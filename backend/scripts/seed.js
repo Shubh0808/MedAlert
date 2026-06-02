@@ -42,7 +42,14 @@ const hospitals = [
   }
 ];
 
-const upsertUser = async ({ email, password, role, fullName, phone, medicalProfile }) => {
+const upsertUser = async ({
+  email,
+  password,
+  role,
+  fullName,
+  phone,
+  medicalProfile
+}) => {
   let user = await User.findOne({ email }).select("+password");
 
   if (!user) {
@@ -103,6 +110,7 @@ const seed = async () => {
   });
 
   await EmergencyContact.deleteMany({ user: demoUser._id });
+
   await EmergencyContact.insertMany([
     {
       user: demoUser._id,
@@ -121,18 +129,44 @@ const seed = async () => {
   ]);
 
   for (const hospital of hospitals) {
-    await Hospital.updateOne({ name: hospital.name }, hospital, { upsert: true });
+    await Hospital.findOneAndUpdate(
+      { name: hospital.name },
+      {
+        ...hospital,
+        location: {
+          type: "Point",
+          coordinates: [hospital.longitude, hospital.latitude]
+        }
+      },
+      {
+        upsert: true,
+        new: true,
+        runValidators: true
+      }
+    );
   }
 
-  console.log("Seed completed.");
-  console.log("Admin login: admin@medalert.local / Admin@12345");
-  console.log("User login: user@medalert.local / User@12345");
+  console.log("=================================");
+  console.log("Seed completed successfully");
+  console.log("=================================");
+  console.log("Admin login:");
+  console.log("Email: admin@medalert.local");
+  console.log("Password: Admin@12345");
+  console.log("");
+  console.log("User login:");
+  console.log("Email: user@medalert.local");
+  console.log("Password: User@12345");
+  console.log("=================================");
 
   await mongoose.disconnect();
 };
 
 seed().catch(async (error) => {
   console.error(error);
-  await mongoose.disconnect();
+
+  try {
+    await mongoose.disconnect();
+  } catch {}
+
   process.exit(1);
 });
