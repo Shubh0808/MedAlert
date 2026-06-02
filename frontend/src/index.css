@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color: #102033;
+  background: #f6fafb;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.leaflet-container {
+  width: 100%;
+  min-height: 320px;
+  z-index: 1;
+}
+
+.medical-hero {
+  background-image:
+    linear-gradient(90deg, rgba(4, 18, 32, 0.9), rgba(4, 18, 32, 0.62), rgba(4, 18, 32, 0.22)),
+    url("https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=1800&q=80");
+  background-position: center;
+  background-size: cover;
+}
+
+@media (max-width: 768px) {
+  .medical-hero {
+    background-image:
+      linear-gradient(180deg, rgba(4, 18, 32, 0.9), rgba(4, 18, 32, 0.72)),
+      url("https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=1100&q=80");
+  }
+}

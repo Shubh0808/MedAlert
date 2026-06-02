@@ -1,0 +1,138 @@
+import dotenv from "dotenv";
+import mongoose from "mongoose";
+import Admin from "../src/models/Admin.js";
+import EmergencyContact from "../src/models/EmergencyContact.js";
+import Hospital from "../src/models/Hospital.js";
+import User from "../src/models/User.js";
+
+dotenv.config();
+
+const hospitals = [
+  {
+    name: "Apollo Emergency Care",
+    phone: "+91 44 2829 3333",
+    address: "Greams Road, Chennai, Tamil Nadu",
+    latitude: 13.0635,
+    longitude: 80.2516,
+    services: ["Emergency", "ICU", "Trauma", "Ambulance"]
+  },
+  {
+    name: "Fortis Malar Hospital",
+    phone: "+91 44 4289 2222",
+    address: "Adyar, Chennai, Tamil Nadu",
+    latitude: 13.0102,
+    longitude: 80.2586,
+    services: ["Emergency", "Cardiology", "ICU", "Ambulance"]
+  },
+  {
+    name: "SIMS Hospital",
+    phone: "+91 44 2000 2000",
+    address: "Vadapalani, Chennai, Tamil Nadu",
+    latitude: 13.0506,
+    longitude: 80.2121,
+    services: ["Emergency", "Neurology", "ICU", "Ambulance"]
+  },
+  {
+    name: "Global Hospitals",
+    phone: "+91 44 4477 7000",
+    address: "Perumbakkam, Chennai, Tamil Nadu",
+    latitude: 12.9063,
+    longitude: 80.2067,
+    services: ["Emergency", "Transplant", "ICU", "Ambulance"]
+  }
+];
+
+const upsertUser = async ({ email, password, role, fullName, phone, medicalProfile }) => {
+  let user = await User.findOne({ email }).select("+password");
+
+  if (!user) {
+    user = await User.create({
+      email,
+      password,
+      role,
+      fullName,
+      phone,
+      medicalProfile
+    });
+  }
+
+  return user;
+};
+
+const seed = async () => {
+  if (!process.env.MONGO_URI) {
+    throw new Error("MONGO_URI is required to seed data.");
+  }
+
+  await mongoose.connect(process.env.MONGO_URI);
+
+  const admin = await upsertUser({
+    email: "admin@medalert.local",
+    password: "Admin@12345",
+    role: "admin",
+    fullName: "MedAlert Administrator",
+    phone: "+91 90000 00001",
+    medicalProfile: {}
+  });
+
+  await Admin.updateOne(
+    { user: admin._id },
+    {
+      user: admin._id,
+      employeeCode: "MED-ADMIN-001",
+      department: "Emergency Operations"
+    },
+    { upsert: true }
+  );
+
+  const demoUser = await upsertUser({
+    email: "user@medalert.local",
+    password: "User@12345",
+    role: "user",
+    fullName: "Demo Patient",
+    phone: "+91 90000 00002",
+    medicalProfile: {
+      age: 22,
+      gender: "male",
+      bloodGroup: "O+",
+      allergies: ["Penicillin"],
+      existingDiseases: ["Asthma"],
+      currentMedications: ["Salbutamol inhaler"],
+      address: "Chennai, Tamil Nadu"
+    }
+  });
+
+  await EmergencyContact.deleteMany({ user: demoUser._id });
+  await EmergencyContact.insertMany([
+    {
+      user: demoUser._id,
+      name: "Ravi Kumar",
+      relation: "Father",
+      phone: "+91 98765 43210",
+      isPrimary: true
+    },
+    {
+      user: demoUser._id,
+      name: "Anita Kumar",
+      relation: "Mother",
+      phone: "+91 98765 43211",
+      isPrimary: false
+    }
+  ]);
+
+  for (const hospital of hospitals) {
+    await Hospital.updateOne({ name: hospital.name }, hospital, { upsert: true });
+  }
+
+  console.log("Seed completed.");
+  console.log("Admin login: admin@medalert.local / Admin@12345");
+  console.log("User login: user@medalert.local / User@12345");
+
+  await mongoose.disconnect();
+};
+
+seed().catch(async (error) => {
+  console.error(error);
+  await mongoose.disconnect();
+  process.exit(1);
+});

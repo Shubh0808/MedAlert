@@ -1,0 +1,34 @@
+[
+  {
+    "name": "Apollo Emergency Care",
+    "phone": "+91 44 2829 3333",
+    "address": "Greams Road, Chennai, Tamil Nadu",
+    "latitude": 13.0635,
+    "longitude": 80.2516,
+    "services": ["Emergency", "ICU", "Trauma", "Ambulance"]
+  },
+  {
+    "name": "Fortis Malar Hospital",
+    "phone": "+91 44 4289 2222",
+    "address": "Adyar, Chennai, Tamil Nadu",
+    "latitude": 13.0102,
+    "longitude": 80.2586,
+    "services": ["Emergency", "Cardiology", "ICU", "Ambulance"]
+  },
+  {
+    "name": "SIMS Hospital",
+    "phone": "+91 44 2000 2000",
+    "address": "Vadapalani, Chennai, Tamil Nadu",
+    "latitude": 13.0506,
+    "longitude": 80.2121,
+    "services": ["Emergency", "Neurology", "ICU", "Ambulance"]
+  },
+  {
+    "name": "Global Hospitals",
+    "phone": "+91 44 4477 7000",
+    "address": "Perumbakkam, Chennai, Tamil Nadu",
+    "latitude": 12.9063,
+    "longitude": 80.2067,
+    "services": ["Emergency", "Transplant", "ICU", "Ambulance"]
+  }
+]
