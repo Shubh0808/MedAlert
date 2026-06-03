@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import User from "../models/User.js";
 import asyncHandler from "../utils/asyncHandler.js";
+import { getProfileCompleteness } from "../utils/profileCompleteness.js";
 import { signToken } from "../utils/token.js";
 
 const sanitizeUser = (user) => ({
@@ -10,6 +11,8 @@ const sanitizeUser = (user) => ({
   phone: user.phone,
   role: user.role,
   medicalProfile: user.medicalProfile,
+  profileCompleteness: getProfileCompleteness(user),
+  lastLoginAt: user.lastLoginAt,
   createdAt: user.createdAt
 });
 

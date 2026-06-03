@@ -67,11 +67,31 @@ const upsertUser = async ({
 };
 
 const seed = async () => {
+  console.log("=================================");
+  console.log("NODE_ENV:", process.env.NODE_ENV);
+  console.log("MONGO_URI exists:", !!process.env.MONGO_URI);
+  console.log(
+    "MONGO_URI:",
+    process.env.MONGO_URI
+      ? process.env.MONGO_URI.replace(/\/\/.*?:.*?@/, "//***:***@")
+      : "NOT FOUND"
+  );
+  console.log("=================================");
+
   if (!process.env.MONGO_URI) {
     throw new Error("MONGO_URI is required to seed data.");
   }
 
-  await mongoose.connect(process.env.MONGO_URI);
+  mongoose.set("strictQuery", false);
+
+  console.log("Connecting to MongoDB Atlas...");
+
+  await mongoose.connect(process.env.MONGO_URI, {
+    serverSelectionTimeoutMS: 30000,
+    connectTimeoutMS: 30000
+  });
+
+  console.log("MongoDB Connected Successfully");
 
   const admin = await upsertUser({
     email: "admin@medalert.local",
@@ -162,7 +182,10 @@ const seed = async () => {
 };
 
 seed().catch(async (error) => {
+  console.error("=================================");
+  console.error("SEED ERROR:");
   console.error(error);
+  console.error("=================================");
 
   try {
     await mongoose.disconnect();

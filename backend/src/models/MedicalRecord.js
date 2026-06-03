@@ -39,6 +39,18 @@ const medicalRecordSchema = new mongoose.Schema(
     tags: {
       type: [String],
       default: []
+    },
+    notes: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+      default: ""
+    },
+    documentDate: Date,
+    isFavorite: {
+      type: Boolean,
+      default: false,
+      index: true
     }
   },
   {

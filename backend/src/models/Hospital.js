@@ -14,6 +14,12 @@ const hospitalSchema = new mongoose.Schema(
       maxlength: 20,
       default: ""
     },
+    emergencyPhone: {
+      type: String,
+      trim: true,
+      maxlength: 20,
+      default: ""
+    },
     address: {
       type: String,
       required: true,
@@ -47,6 +53,35 @@ const hospitalSchema = new mongoose.Schema(
       type: [String],
       default: ["Emergency", "ICU", "Ambulance"]
     },
+    has24x7Emergency: {
+      type: Boolean,
+      default: true,
+      index: true
+    },
+    ambulanceAvailable: {
+      type: Boolean,
+      default: true,
+      index: true
+    },
+    capacityStatus: {
+      type: String,
+      enum: ["available", "limited", "full", "unknown"],
+      default: "unknown",
+      index: true
+    },
+    website: {
+      type: String,
+      trim: true,
+      maxlength: 200,
+      default: ""
+    },
+    notes: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+      default: ""
+    },
+    lastVerifiedAt: Date,
     isActive: {
       type: Boolean,
       default: true,

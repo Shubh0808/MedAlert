@@ -3,8 +3,10 @@ export const notifyEmergencyContacts = async ({ user, contacts, alert }) => {
     contactId: contact._id,
     name: contact.name,
     phone: contact.phone,
-    channel: "sms-placeholder",
+    preference: contact.notificationPreference || "sms",
+    channel: `${contact.notificationPreference || "sms"}-placeholder`,
     status: "queued",
-    message: `${user.fullName} triggered an SOS alert at ${alert.createdAt.toISOString()}`
+    queuedAt: new Date(),
+    message: `${user.fullName} triggered a ${alert.severity} SOS alert at ${alert.createdAt.toISOString()}. Location: ${alert.googleMapsUrl}`
   }));
 };

@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Save } from "lucide-react";
+import { CheckCircle2, CircleAlert, Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import api from "../../api/client.js";
@@ -37,6 +37,16 @@ const MedicalProfile = () => {
       allergies: csv(profile.medicalProfile?.allergies),
       existingDiseases: csv(profile.medicalProfile?.existingDiseases),
       currentMedications: csv(profile.medicalProfile?.currentMedications),
+      heightCm: profile.medicalProfile?.heightCm || "",
+      weightKg: profile.medicalProfile?.weightKg || "",
+      insuranceProvider: profile.medicalProfile?.insuranceProvider || "",
+      insurancePolicyNumber: profile.medicalProfile?.insurancePolicyNumber || "",
+      physicianName: profile.medicalProfile?.physicianName || "",
+      physicianPhone: profile.medicalProfile?.physicianPhone || "",
+      emergencyNotes: profile.medicalProfile?.emergencyNotes || "",
+      preferredLanguage: profile.medicalProfile?.preferredLanguage || "",
+      organDonor: Boolean(profile.medicalProfile?.organDonor),
+      consentToShare: profile.medicalProfile?.consentToShare !== false,
       address: profile.medicalProfile?.address || ""
     });
   }, [data, reset]);
@@ -55,6 +65,16 @@ const MedicalProfile = () => {
           allergies: values.allergies,
           existingDiseases: values.existingDiseases,
           currentMedications: values.currentMedications,
+          heightCm: values.heightCm ? Number(values.heightCm) : undefined,
+          weightKg: values.weightKg ? Number(values.weightKg) : undefined,
+          insuranceProvider: values.insuranceProvider,
+          insurancePolicyNumber: values.insurancePolicyNumber,
+          physicianName: values.physicianName,
+          physicianPhone: values.physicianPhone,
+          emergencyNotes: values.emergencyNotes,
+          preferredLanguage: values.preferredLanguage,
+          organDonor: Boolean(values.organDonor),
+          consentToShare: Boolean(values.consentToShare),
           address: values.address
         }
       };
@@ -71,14 +91,44 @@ const MedicalProfile = () => {
     return <p className="text-sm text-slate-500">Loading profile...</p>;
   }
 
+  const readiness = data?.profileCompleteness;
+
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-sm font-semibold text-teal-700">Medical Profile</p>
-        <h1 className="mt-1 text-3xl font-bold text-slate-950">Health Information</h1>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold text-teal-700">Medical Profile</p>
+          <h1 className="mt-1 text-3xl font-bold text-slate-950">Health Information</h1>
+        </div>
+        {readiness ? (
+          <div className="rounded-lg border border-teal-100 bg-teal-50 px-4 py-3 text-sm font-bold text-teal-800">
+            Profile readiness {readiness.percent}%
+          </div>
+        ) : null}
       </div>
 
       <form className="rounded-lg border border-slate-200 bg-white p-5 shadow-soft" onSubmit={handleSubmit(onSubmit)}>
+        {readiness?.missing?.length ? (
+          <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            <p className="flex items-center gap-2 font-bold">
+              <CircleAlert className="h-4 w-4" aria-hidden="true" />
+              Complete these details for a stronger emergency card
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {readiness.missing.map((item) => (
+                <span key={item} className="rounded-md bg-white px-2 py-1 text-xs font-bold">
+                  {item}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="mb-5 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-800">
+            <CheckCircle2 className="mr-2 inline h-4 w-4" aria-hidden="true" />
+            Emergency profile is ready.
+          </div>
+        )}
+
         <div className="grid gap-4 md:grid-cols-2">
           <FormField label="Full name">
             <input className={inputClasses} required {...register("fullName")} />
@@ -106,6 +156,15 @@ const MedicalProfile = () => {
               ))}
             </select>
           </FormField>
+          <FormField label="Preferred language">
+            <input className={inputClasses} placeholder="English, Hindi, Tamil" {...register("preferredLanguage")} />
+          </FormField>
+          <FormField label="Height (cm)">
+            <input className={inputClasses} type="number" min="30" max="260" {...register("heightCm")} />
+          </FormField>
+          <FormField label="Weight (kg)">
+            <input className={inputClasses} type="number" min="1" max="350" {...register("weightKg")} />
+          </FormField>
           <FormField label="Allergies">
             <input className={inputClasses} placeholder="Penicillin, peanuts" {...register("allergies")} />
           </FormField>
@@ -115,11 +174,40 @@ const MedicalProfile = () => {
           <FormField label="Current medications">
             <input className={inputClasses} placeholder="Metformin, inhaler" {...register("currentMedications")} />
           </FormField>
+          <FormField label="Doctor name">
+            <input className={inputClasses} placeholder="Dr. Sharma" {...register("physicianName")} />
+          </FormField>
+          <FormField label="Doctor phone">
+            <input className={inputClasses} placeholder="+91 ..." {...register("physicianPhone")} />
+          </FormField>
+          <FormField label="Insurance provider">
+            <input className={inputClasses} placeholder="Provider name" {...register("insuranceProvider")} />
+          </FormField>
+          <FormField label="Policy number">
+            <input className={inputClasses} placeholder="Policy / member ID" {...register("insurancePolicyNumber")} />
+          </FormField>
           <div className="md:col-span-2">
             <FormField label="Address">
               <textarea className={`${inputClasses} min-h-24`} {...register("address")} />
             </FormField>
           </div>
+          <div className="md:col-span-2">
+            <FormField label="Emergency notes">
+              <textarea
+                className={`${inputClasses} min-h-24`}
+                placeholder="Seizure protocol, implants, communication needs, or anything a responder should know."
+                {...register("emergencyNotes")}
+              />
+            </FormField>
+          </div>
+          <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+            <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-teal-700" {...register("organDonor")} />
+            Organ donor
+          </label>
+          <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+            <input type="checkbox" className="h-4 w-4 rounded border-slate-300 text-teal-700" {...register("consentToShare")} />
+            Allow public QR emergency card
+          </label>
         </div>
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <button

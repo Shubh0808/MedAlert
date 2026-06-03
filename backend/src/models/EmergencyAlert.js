@@ -37,10 +37,36 @@ const emergencyAlertSchema = new mongoose.Schema(
       default: "active",
       index: true
     },
+    severity: {
+      type: String,
+      enum: ["critical", "high", "medium"],
+      default: "critical",
+      index: true
+    },
+    source: {
+      type: String,
+      enum: ["web", "qr", "admin", "api"],
+      default: "web"
+    },
     notes: {
       type: String,
       trim: true,
       maxlength: 500,
+      default: ""
+    },
+    resolutionNotes: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+      default: ""
+    },
+    accuracyMeters: {
+      type: Number,
+      min: 0
+    },
+    googleMapsUrl: {
+      type: String,
+      trim: true,
       default: ""
     },
     notifiedContacts: [
@@ -48,12 +74,15 @@ const emergencyAlertSchema = new mongoose.Schema(
         contactId: mongoose.Schema.Types.ObjectId,
         name: String,
         phone: String,
+        preference: String,
         channel: String,
         status: String,
-        message: String
+        message: String,
+        queuedAt: Date
       }
     ],
-    resolvedAt: Date
+    resolvedAt: Date,
+    cancelledAt: Date
   },
   {
     timestamps: true
@@ -67,6 +96,11 @@ emergencyAlertSchema.pre("validate", function setGeoPoint(next) {
     type: "Point",
     coordinates: [this.longitude, this.latitude]
   };
+
+  if (!this.googleMapsUrl && this.latitude !== undefined && this.longitude !== undefined) {
+    this.googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${this.latitude},${this.longitude}`;
+  }
+
   next();
 });
 

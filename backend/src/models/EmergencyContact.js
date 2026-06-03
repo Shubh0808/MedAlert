@@ -26,6 +26,31 @@ const emergencyContactSchema = new mongoose.Schema(
       trim: true,
       maxlength: 20
     },
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      maxlength: 120,
+      default: ""
+    },
+    priority: {
+      type: Number,
+      min: 1,
+      max: 5,
+      default: 3
+    },
+    notificationPreference: {
+      type: String,
+      enum: ["sms", "call", "whatsapp", "all"],
+      default: "sms"
+    },
+    notes: {
+      type: String,
+      trim: true,
+      maxlength: 300,
+      default: ""
+    },
+    lastNotifiedAt: Date,
     isPrimary: {
       type: Boolean,
       default: false

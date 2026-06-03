@@ -1,22 +1,57 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, Crosshair, HeartPulse, MapPinned } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Copy,
+  Crosshair,
+  HeartPulse,
+  MapPinned,
+  RefreshCcw,
+  XCircle
+} from "lucide-react";
+import { useMemo, useState } from "react";
 import api from "../../api/client.js";
 import MapView from "../../components/MapView.jsx";
 import StatusBadge from "../../components/StatusBadge.jsx";
 import { useGeolocation } from "../../hooks/useGeolocation.js";
-import { formatDateTime } from "../../utils/format.js";
+import { formatDateTime, mapsSearchUrl } from "../../utils/format.js";
 
 const SOSPage = () => {
   const queryClient = useQueryClient();
   const { position, loading, error, requestLocation } = useGeolocation({ watch: true });
+  const [severity, setSeverity] = useState("critical");
+  const [notes, setNotes] = useState("SOS triggered from MedAlert web app");
+  const [message, setMessage] = useState("");
+
   const { data } = useQuery({
     queryKey: ["alerts"],
     queryFn: async () => (await api.get("/alerts")).data,
     refetchInterval: 15000
   });
+  const { data: profileData } = useQuery({
+    queryKey: ["profile"],
+    queryFn: async () => (await api.get("/profile")).data
+  });
 
   const alerts = data?.alerts || [];
   const activeAlert = alerts.find((alert) => alert.status === "active");
+  const contacts = profileData?.contacts || [];
+  const readiness = profileData?.profileCompleteness;
+
+  const emergencyMessage = useMemo(() => {
+    const coordinates = activeAlert
+      ? `${activeAlert.latitude}, ${activeAlert.longitude}`
+      : position
+        ? `${position.latitude}, ${position.longitude}`
+        : "Location pending";
+    const link = activeAlert
+      ? activeAlert.googleMapsUrl || mapsSearchUrl(activeAlert.latitude, activeAlert.longitude)
+      : position
+        ? mapsSearchUrl(position.latitude, position.longitude)
+        : "";
+
+    return `MedAlert SOS: ${profileData?.profile?.fullName || "User"} needs help. Severity: ${activeAlert?.severity || severity}. Location: ${coordinates}. ${link}`;
+  }, [activeAlert, position, profileData?.profile?.fullName, severity]);
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -28,21 +63,62 @@ const SOSPage = () => {
         await api.post("/sos", {
           latitude: position.latitude,
           longitude: position.longitude,
-          notes: "SOS triggered from MedAlert web app"
+          accuracyMeters: position.accuracy,
+          severity,
+          notes
         })
       ).data;
     },
     onSuccess: async () => {
+      setMessage("SOS alert created and contacts queued.");
       await queryClient.invalidateQueries({ queryKey: ["alerts"] });
+      await queryClient.invalidateQueries({ queryKey: ["contacts"] });
     }
   });
 
   const resolveMutation = useMutation({
-    mutationFn: async (id) => (await api.patch(`/alerts/${id}/resolve`)).data,
+    mutationFn: async (id) =>
+      (await api.patch(`/alerts/${id}/resolve`, { resolutionNotes: "Resolved from SOS center" })).data,
     onSuccess: async () => {
+      setMessage("Emergency marked as resolved.");
       await queryClient.invalidateQueries({ queryKey: ["alerts"] });
     }
   });
+
+  const cancelMutation = useMutation({
+    mutationFn: async (id) =>
+      (await api.patch(`/alerts/${id}/cancel`, { resolutionNotes: "Cancelled from SOS center" })).data,
+    onSuccess: async () => {
+      setMessage("Emergency alert cancelled.");
+      await queryClient.invalidateQueries({ queryKey: ["alerts"] });
+    }
+  });
+
+  const updateLocationMutation = useMutation({
+    mutationFn: async (id) => {
+      if (!position) {
+        throw new Error("Current GPS location is required.");
+      }
+
+      return (
+        await api.patch(`/alerts/${id}/location`, {
+          latitude: position.latitude,
+          longitude: position.longitude,
+          accuracyMeters: position.accuracy,
+          notes
+        })
+      ).data;
+    },
+    onSuccess: async () => {
+      setMessage("Active alert location updated.");
+      await queryClient.invalidateQueries({ queryKey: ["alerts"] });
+    }
+  });
+
+  const copyEmergencyMessage = async () => {
+    await navigator.clipboard.writeText(emergencyMessage);
+    setMessage("Emergency message copied.");
+  };
 
   const center = position
     ? [position.latitude, position.longitude]
@@ -96,24 +172,52 @@ const SOSPage = () => {
             </div>
             <div>
               <h2 className="text-xl font-bold text-slate-950">One-click SOS</h2>
-              <p className="text-sm text-slate-500">GPS location is attached to every alert.</p>
+              <p className="text-sm text-slate-500">GPS location and severity are attached to every alert.</p>
             </div>
           </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-sm font-semibold text-slate-700">Severity</span>
+              <select className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" value={severity} onChange={(event) => setSeverity(event.target.value)}>
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+              </select>
+            </label>
+            <div className="rounded-lg bg-slate-50 p-3 text-sm">
+              <p className="font-bold text-slate-950">Contact readiness</p>
+              <p className="text-slate-600">{contacts.length} contacts - profile {readiness?.percent ?? 0}% ready</p>
+            </div>
+          </div>
+
+          <label className="mt-4 block">
+            <span className="text-sm font-semibold text-slate-700">Responder notes</span>
+            <textarea
+              className="mt-1 min-h-24 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              maxLength={500}
+            />
+          </label>
 
           <button
             type="button"
             onClick={() => createMutation.mutate()}
-            disabled={createMutation.isPending || !position}
+            disabled={createMutation.isPending || !position || Boolean(activeAlert)}
             className="mt-6 flex h-40 w-full items-center justify-center rounded-lg bg-red-600 text-2xl font-black tracking-normal text-white shadow-soft transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-300"
           >
-            {createMutation.isPending ? "SENDING SOS..." : "TRIGGER SOS"}
+            {createMutation.isPending ? "SENDING SOS..." : activeAlert ? "SOS ACTIVE" : "TRIGGER SOS"}
           </button>
 
           {loading ? <p className="mt-3 text-sm font-semibold text-slate-600">Reading GPS location...</p> : null}
           {error ? <p className="mt-3 text-sm font-semibold text-red-600">{error}</p> : null}
-          {createMutation.error ? (
-            <p className="mt-3 text-sm font-semibold text-red-600">{createMutation.error.message}</p>
+          {createMutation.error || updateLocationMutation.error ? (
+            <p className="mt-3 text-sm font-semibold text-red-600">
+              {createMutation.error?.message || updateLocationMutation.error?.message}
+            </p>
           ) : null}
+          {message ? <p className="mt-3 text-sm font-semibold text-emerald-700">{message}</p> : null}
           {position ? (
             <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
               <p className="font-semibold text-slate-950">Current coordinates</p>
@@ -138,16 +242,43 @@ const SOSPage = () => {
                 Alert created {formatDateTime(activeAlert.createdAt)}
               </p>
               <p className="mt-1 text-sm text-red-700">
-                {activeAlert.notifiedContacts?.length || 0} emergency contacts queued.
+                Severity {activeAlert.severity}. {activeAlert.notifiedContacts?.length || 0} emergency contacts queued.
               </p>
-              <button
-                type="button"
-                onClick={() => resolveMutation.mutate(activeAlert._id)}
-                className="mt-3 inline-flex items-center gap-2 rounded-md bg-emerald-700 px-3 py-2 text-sm font-bold text-white hover:bg-emerald-800"
-              >
-                <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-                Mark resolved
-              </button>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => updateLocationMutation.mutate(activeAlert._id)}
+                  disabled={!position || updateLocationMutation.isPending}
+                  className="inline-flex items-center gap-2 rounded-md bg-blue-700 px-3 py-2 text-sm font-bold text-white hover:bg-blue-800 disabled:opacity-60"
+                >
+                  <RefreshCcw className="h-4 w-4" aria-hidden="true" />
+                  Update location
+                </button>
+                <button
+                  type="button"
+                  onClick={copyEmergencyMessage}
+                  className="inline-flex items-center gap-2 rounded-md border border-red-200 bg-white px-3 py-2 text-sm font-bold text-red-700 hover:bg-red-50"
+                >
+                  <Copy className="h-4 w-4" aria-hidden="true" />
+                  Copy message
+                </button>
+                <button
+                  type="button"
+                  onClick={() => resolveMutation.mutate(activeAlert._id)}
+                  className="inline-flex items-center gap-2 rounded-md bg-emerald-700 px-3 py-2 text-sm font-bold text-white hover:bg-emerald-800"
+                >
+                  <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                  Mark resolved
+                </button>
+                <button
+                  type="button"
+                  onClick={() => cancelMutation.mutate(activeAlert._id)}
+                  className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-100"
+                >
+                  <XCircle className="h-4 w-4" aria-hidden="true" />
+                  Cancel
+                </button>
+              </div>
             </div>
           ) : (
             <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
@@ -155,6 +286,17 @@ const SOSPage = () => {
             </div>
           )}
           <MapView center={center} markers={markers} />
+          {activeAlert ? (
+            <a
+              className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-teal-700"
+              href={activeAlert.googleMapsUrl || mapsSearchUrl(activeAlert.latitude, activeAlert.longitude)}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <MapPinned className="h-4 w-4" aria-hidden="true" />
+              Open emergency location
+            </a>
+          ) : null}
         </div>
       </section>
     </div>

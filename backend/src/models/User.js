@@ -31,6 +31,60 @@ const medicalProfileSchema = new mongoose.Schema(
       type: [String],
       default: []
     },
+    heightCm: {
+      type: Number,
+      min: 30,
+      max: 260
+    },
+    weightKg: {
+      type: Number,
+      min: 1,
+      max: 350
+    },
+    insuranceProvider: {
+      type: String,
+      trim: true,
+      maxlength: 120,
+      default: ""
+    },
+    insurancePolicyNumber: {
+      type: String,
+      trim: true,
+      maxlength: 80,
+      default: ""
+    },
+    physicianName: {
+      type: String,
+      trim: true,
+      maxlength: 120,
+      default: ""
+    },
+    physicianPhone: {
+      type: String,
+      trim: true,
+      maxlength: 20,
+      default: ""
+    },
+    emergencyNotes: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+      default: ""
+    },
+    preferredLanguage: {
+      type: String,
+      trim: true,
+      maxlength: 40,
+      default: ""
+    },
+    organDonor: {
+      type: Boolean,
+      default: false
+    },
+    consentToShare: {
+      type: Boolean,
+      default: true
+    },
     address: {
       type: String,
       trim: true,
