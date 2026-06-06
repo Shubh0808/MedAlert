@@ -9,6 +9,7 @@ import {
   LogOut,
   MapPinned,
   QrCode,
+  Stethoscope,
   UserRound
 } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
@@ -21,6 +22,7 @@ const navItems = [
   { to: "/app/contacts", label: "Contacts", icon: ContactRound },
   { to: "/app/sos", label: "SOS", icon: HeartPulse },
   { to: "/app/hospitals", label: "Hospitals", icon: MapPinned },
+  { to: "/app/tools", label: "Medical Tools", icon: Stethoscope },
   { to: "/app/records", label: "Records", icon: FileText },
   { to: "/app/qr-card", label: "QR Card", icon: QrCode },
   { to: "/app/history", label: "History", icon: History }

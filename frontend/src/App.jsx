@@ -12,6 +12,7 @@ import Contacts from "./pages/user/Contacts.jsx";
 import Dashboard from "./pages/user/Dashboard.jsx";
 import EmergencyHistory from "./pages/user/EmergencyHistory.jsx";
 import HospitalFinder from "./pages/user/HospitalFinder.jsx";
+import MedicalTools from "./pages/user/MedicalTools.jsx";
 import MedicalProfile from "./pages/user/MedicalProfile.jsx";
 import MedicalRecords from "./pages/user/MedicalRecords.jsx";
 import QRCard from "./pages/user/QRCard.jsx";
@@ -38,6 +39,7 @@ const App = () => (
       <Route path="contacts" element={<Contacts />} />
       <Route path="sos" element={<SOSPage />} />
       <Route path="hospitals" element={<HospitalFinder />} />
+      <Route path="tools" element={<MedicalTools />} />
       <Route path="records" element={<MedicalRecords />} />
       <Route path="qr-card" element={<QRCard />} />
       <Route path="history" element={<EmergencyHistory />} />

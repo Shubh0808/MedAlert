@@ -4,7 +4,7 @@ MedAlert is a production-ready MERN web application for medical emergency respon
 
 ## Tech Stack
 
-**Frontend:** React.js, Vite, React Router, Tailwind CSS, Axios, React Query, React Hook Form, Leaflet Maps  
+**Frontend:** React.js, Vite, React Router, Tailwind CSS, Axios, React Query, React Hook Form, Google Maps
 **Backend:** Node.js, Express.js, JWT, bcrypt, Multer, Cloudinary-ready uploads  
 **Database:** MongoDB Atlas with Mongoose  
 **Deployment:** Vercel frontend, Render backend, MongoDB Atlas database
@@ -50,7 +50,8 @@ MedAlert/
 - Emergency contacts CRUD
 - SOS alert creation with browser GPS coordinates
 - Active emergency status and emergency history
-- Leaflet/OpenStreetMap location and hospital maps
+- Google Maps location, SOS, hospital marker, and directions support
+- Smart Medical Tools center with 26 demo-ready calculators, checklists, triage aids, first-aid tools, and trackers
 - Medical records upload with PDF/image validation
 - Cloudinary integration when credentials are configured, local upload fallback for development
 - QR emergency card generation and download
@@ -82,6 +83,7 @@ MONGO_URI=<your MongoDB Atlas connection string>
 JWT_SECRET=<long random secret>
 JWT_EXPIRES_IN=7d
 CLIENT_URL=http://localhost:5173
+GOOGLE_MAPS_API_KEY=<your Google Maps JavaScript API key>
 ```
 
 3. Configure frontend environment:
@@ -89,6 +91,8 @@ CLIENT_URL=http://localhost:5173
 ```bash
 copy frontend\.env.example frontend\.env
 ```
+
+Keep `VITE_API_URL=http://localhost:5000/api`. You can leave `VITE_GOOGLE_MAPS_API_KEY` blank when the backend `GOOGLE_MAPS_API_KEY` is configured.
 
 4. Seed demo data:
 
@@ -104,6 +108,19 @@ npm run dev
 
 Frontend: `http://localhost:5173`  
 Backend health check: `http://localhost:5000/health`
+
+## Demo Run Checklist
+
+1. Open a terminal in the project folder.
+2. Run `npm install`.
+3. Confirm `backend/.env` has `MONGO_URI`, `JWT_SECRET`, `CLIENT_URL=http://localhost:5173`, and `GOOGLE_MAPS_API_KEY`.
+4. Confirm `frontend/.env` has `VITE_API_URL=http://localhost:5000/api`.
+5. Seed demo accounts and hospitals with `npm run seed`.
+6. Start the app with `npm run dev`.
+7. Open `http://localhost:5173`.
+8. Login with the demo user or admin below.
+9. For Google Maps, allow browser location permission on the SOS or Hospitals page.
+10. Show the new Medical Tools page at `http://localhost:5173/app/tools`.
 
 ## Demo Credentials
 

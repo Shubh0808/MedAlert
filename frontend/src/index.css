@@ -24,10 +24,9 @@ textarea {
   font: inherit;
 }
 
-.leaflet-container {
+.google-map-canvas {
   width: 100%;
   min-height: 320px;
-  z-index: 1;
 }
 
 .medical-hero {

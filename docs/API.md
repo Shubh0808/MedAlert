@@ -12,6 +12,19 @@ Use a bearer token for protected routes:
 Authorization: Bearer <jwt-token>
 ```
 
+## Public Config
+
+### GET `/public/maps-config`
+
+Returns the Google Maps browser key configured in `backend/.env`.
+
+```json
+{
+  "googleMapsApiKey": "<key>",
+  "hasGoogleMapsApiKey": true
+}
+```
+
 ## Authentication
 
 ### POST `/register`
