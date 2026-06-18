@@ -1,8 +1,9 @@
 import Hospital from "../models/Hospital.js";
+import {
+  buildHospitalFilter,
+  findHospitalsNear
+} from "../services/hospitalLookup.service.js";
 import asyncHandler from "../utils/asyncHandler.js";
-import { calculateDistanceKm } from "../utils/distance.js";
-
-const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const toBoolean = (value) => value === true || value === "true";
 
@@ -23,16 +24,6 @@ const normalizeHospitalPayload = (body) => ({
   lastVerifiedAt: body.lastVerifiedAt || new Date()
 });
 
-const withDistance = (hospital, latitude, longitude) => ({
-  ...hospital.toObject(),
-  distanceKm: calculateDistanceKm(
-    Number(latitude),
-    Number(longitude),
-    hospital.latitude,
-    hospital.longitude
-  )
-});
-
 export const getHospitals = asyncHandler(async (req, res) => {
   const {
     lat,
@@ -45,42 +36,31 @@ export const getHospitals = asyncHandler(async (req, res) => {
     capacityStatus
   } = req.query;
 
-  const filter = { isActive: true };
-
-  if (q) {
-    const pattern = new RegExp(escapeRegex(String(q)), "i");
-    filter.$or = [{ name: pattern }, { address: pattern }, { services: pattern }];
-  }
-
-  if (service) {
-    filter.services = new RegExp(escapeRegex(String(service)), "i");
-  }
-
-  if (has24x7Emergency !== undefined && has24x7Emergency !== "") {
-    filter.has24x7Emergency = toBoolean(has24x7Emergency);
-  }
-
-  if (ambulanceAvailable !== undefined && ambulanceAvailable !== "") {
-    filter.ambulanceAvailable = toBoolean(ambulanceAvailable);
-  }
-
-  if (capacityStatus) {
-    filter.capacityStatus = capacityStatus;
-  }
-
-  const hospitals = await Hospital.find(filter).sort({ name: 1 });
+  const filters = { q, service, has24x7Emergency, ambulanceAvailable, capacityStatus };
+  const filter = buildHospitalFilter(filters);
 
   if (lat && lng) {
-    const nearbyHospitals = hospitals
-      .map((hospital) => withDistance(hospital, lat, lng))
-      .filter((hospital) => hospital.distanceKm <= Number(radius))
-      .sort((a, b) => a.distanceKm - b.distanceKm);
+    const nearbyHospitals = await findHospitalsNear({
+      latitude: lat,
+      longitude: lng,
+      radiusKm: radius,
+      filters,
+      includeExternal: true
+    });
 
-    res.status(200).json({ hospitals: nearbyHospitals });
+    res.status(200).json({
+      hospitals: nearbyHospitals,
+      sources: {
+        database: nearbyHospitals.filter((hospital) => hospital.source === "database").length,
+        openstreetmap: nearbyHospitals.filter((hospital) => hospital.source === "openstreetmap").length,
+        regionalFallback: nearbyHospitals.filter((hospital) => hospital.source === "regional-fallback").length
+      }
+    });
     return;
   }
 
-  res.status(200).json({ hospitals });
+  const hospitals = await Hospital.find(filter).sort({ name: 1 });
+  res.status(200).json({ hospitals: hospitals.map((hospital) => ({ ...hospital.toObject(), source: "database" })) });
 });
 
 export const createHospital = asyncHandler(async (req, res) => {

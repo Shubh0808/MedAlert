@@ -1,7 +1,8 @@
 import EmergencyAlert from "../models/EmergencyAlert.js";
 import EmergencyContact from "../models/EmergencyContact.js";
+import { findNearestHospital } from "../services/hospitalLookup.service.js";
 import asyncHandler from "../utils/asyncHandler.js";
-import { notifyEmergencyContacts } from "../utils/notifyContacts.js";
+import { notifyEmergencyContacts, notifyNearestHospital } from "../utils/notifyContacts.js";
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -25,18 +26,45 @@ export const createSOS = asyncHandler(async (req, res) => {
     status: "active"
   });
 
-  const contacts = await EmergencyContact.find({ user: req.user._id }).sort({
-    isPrimary: -1,
-    priority: 1,
-    createdAt: -1
-  });
+  const [contacts, nearestHospital] = await Promise.all([
+    EmergencyContact.find({ user: req.user._id }).sort({
+      isPrimary: -1,
+      priority: 1,
+      createdAt: -1
+    }),
+    findNearestHospital({ latitude, longitude, radiusKm: 50 })
+  ]);
   const notifiedContacts = await notifyEmergencyContacts({
     user: req.user,
     contacts,
-    alert
+    alert,
+    nearestHospital
+  });
+  const hospitalNotification = await notifyNearestHospital({
+    user: req.user,
+    contacts,
+    alert,
+    nearestHospital
   });
 
   alert.notifiedContacts = notifiedContacts;
+  alert.nearestHospital = nearestHospital
+    ? {
+        hospitalId: String(nearestHospital._id),
+        name: nearestHospital.name,
+        phone: nearestHospital.phone,
+        emergencyPhone: nearestHospital.emergencyPhone,
+        address: nearestHospital.address,
+        latitude: nearestHospital.latitude,
+        longitude: nearestHospital.longitude,
+        distanceKm: nearestHospital.distanceKm,
+        source: nearestHospital.source,
+        directionsUrl:
+          nearestHospital.directionsUrl ||
+          `https://www.google.com/maps/dir/?api=1&destination=${nearestHospital.latitude},${nearestHospital.longitude}`
+      }
+    : undefined;
+  alert.hospitalNotification = hospitalNotification;
   await alert.save();
   await EmergencyContact.updateMany(
     { _id: { $in: contacts.map((contact) => contact._id) } },

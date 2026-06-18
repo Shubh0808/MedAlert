@@ -95,12 +95,11 @@ const hospitalSchema = new mongoose.Schema(
 
 hospitalSchema.index({ location: "2dsphere" });
 
-hospitalSchema.pre("validate", function setGeoPoint(next) {
+hospitalSchema.pre("validate", function setGeoPoint() {
   this.location = {
     type: "Point",
     coordinates: [this.longitude, this.latitude]
   };
-  next();
 });
 
 const Hospital = mongoose.model("Hospital", hospitalSchema);

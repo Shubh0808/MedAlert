@@ -55,6 +55,7 @@ const HospitalFinder = () => {
   });
 
   const hospitals = data?.hospitals || [];
+  const sources = data?.sources;
   const center = position ? [position.latitude, position.longitude] : undefined;
   const markers = [
     position
@@ -137,6 +138,12 @@ const HospitalFinder = () => {
             Ambulance available
           </label>
           <span>{hospitals.length} hospitals shown</span>
+          {sources?.openstreetmap ? (
+            <span className="text-teal-700">{sources.openstreetmap} live map results</span>
+          ) : null}
+          {sources?.regionalFallback ? (
+            <span className="text-amber-700">{sources.regionalFallback} regional fallback results</span>
+          ) : null}
         </div>
       </section>
 
@@ -161,6 +168,11 @@ const HospitalFinder = () => {
                     <p className="mt-1 text-xs font-bold uppercase tracking-normal text-slate-500">
                       Capacity: {hospital.capacityStatus || "unknown"}
                     </p>
+                    {hospital.source === "openstreetmap" || hospital.source === "regional-fallback" ? (
+                      <p className={`mt-1 text-xs font-bold uppercase tracking-normal ${hospital.source === "openstreetmap" ? "text-teal-700" : "text-amber-700"}`}>
+                        {hospital.source === "openstreetmap" ? "OpenStreetMap live result" : "Regional fallback result"}
+                      </p>
+                    ) : null}
                   </div>
                   <div className="flex shrink-0 gap-2">
                     {(hospital.emergencyPhone || hospital.phone) ? (
@@ -173,7 +185,7 @@ const HospitalFinder = () => {
                       </a>
                     ) : null}
                     <a
-                      href={mapsDirectionsUrl(hospital.latitude, hospital.longitude)}
+                      href={hospital.directionsUrl || mapsDirectionsUrl(hospital.latitude, hospital.longitude)}
                       target="_blank"
                       rel="noreferrer"
                       className="grid h-9 w-9 place-items-center rounded-md border border-slate-300 text-slate-700 hover:bg-slate-100"
@@ -204,7 +216,9 @@ const HospitalFinder = () => {
               </article>
             ))}
             {!hospitals.length && !isLoading ? (
-              <p className="text-sm text-slate-500">No hospitals match these filters.</p>
+              <p className="text-sm text-slate-500">
+                No hospitals match these filters. Try a wider radius or clear emergency-only filters.
+              </p>
             ) : null}
           </div>
         </section>

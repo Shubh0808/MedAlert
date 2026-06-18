@@ -1,14 +1,33 @@
-import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, ContactRound, FileText, HeartPulse, MapPinned, ShieldCheck } from "lucide-react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import {
+  AlertTriangle,
+  Bot,
+  Building2,
+  CheckCircle2,
+  ContactRound,
+  FileText,
+  HeartPulse,
+  Loader2,
+  MapPinned,
+  Pill,
+  Send,
+  ShieldCheck,
+  Stethoscope
+} from "lucide-react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/client.js";
 import StatCard from "../../components/StatCard.jsx";
 import StatusBadge from "../../components/StatusBadge.jsx";
 import { useAuth } from "../../contexts/AuthContext.jsx";
+import { useGeolocation } from "../../hooks/useGeolocation.js";
 import { categoryLabel, formatBytes, formatDateTime, listText } from "../../utils/format.js";
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const { position, requestLocation } = useGeolocation({ watch: false });
+  const [symptoms, setSymptoms] = useState("");
+  const [assistantResult, setAssistantResult] = useState(null);
   const { data: profileData } = useQuery({
     queryKey: ["profile"],
     queryFn: async () => (await api.get("/profile")).data
@@ -32,6 +51,27 @@ const Dashboard = () => {
   const contacts = profileData?.contacts || [];
   const records = recordsData?.records || [];
   const readiness = profileData?.profileCompleteness;
+  const assistant = assistantResult?.assistant;
+
+  const assistantMutation = useMutation({
+    mutationFn: async () =>
+      (
+        await api.post("/ai/health-assistant", {
+          symptoms,
+          latitude: position?.latitude,
+          longitude: position?.longitude
+        })
+      ).data,
+    onSuccess: (result) => {
+      setAssistantResult(result);
+    }
+  });
+
+  const submitAssistant = (event) => {
+    event.preventDefault();
+    if (!symptoms.trim()) return;
+    assistantMutation.mutate();
+  };
 
   return (
     <div className="space-y-6">
@@ -77,6 +117,106 @@ const Dashboard = () => {
         <StatCard label="Medical Records" value={records.length} icon={FileText} tone="blue" />
         <StatCard label="Profile Ready" value={`${readiness?.percent ?? 0}%`} icon={ShieldCheck} tone="amber" />
       </div>
+
+      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="flex items-center gap-2 text-sm font-bold text-teal-700">
+              <Bot className="h-4 w-4" aria-hidden="true" />
+              AI health assistant
+            </p>
+            <h2 className="mt-1 text-xl font-bold text-slate-950">Describe symptoms for next-step guidance</h2>
+          </div>
+          <button
+            type="button"
+            onClick={requestLocation}
+            className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-100"
+          >
+            <MapPinned className="h-4 w-4" aria-hidden="true" />
+            Add location
+          </button>
+        </div>
+
+        <form className="mt-4 grid gap-3 lg:grid-cols-[1fr_auto]" onSubmit={submitAssistant}>
+          <textarea
+            className="min-h-24 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+            value={symptoms}
+            onChange={(event) => setSymptoms(event.target.value)}
+            placeholder="Example: fever and sore throat for two days, mild headache, no breathing problem"
+            maxLength={1500}
+          />
+          <button
+            type="submit"
+            disabled={assistantMutation.isPending || !symptoms.trim()}
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-teal-700 px-5 py-3 text-sm font-bold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-teal-300"
+          >
+            {assistantMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Send className="h-4 w-4" aria-hidden="true" />
+            )}
+            Ask AI
+          </button>
+        </form>
+
+        {assistantMutation.error ? (
+          <p className="mt-3 text-sm font-semibold text-red-600">{assistantMutation.error.message}</p>
+        ) : null}
+
+        {assistant ? (
+          <div className="mt-5 grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+            <div className="rounded-lg border border-teal-100 bg-teal-50 p-4">
+              <p className="text-sm font-bold uppercase tracking-normal text-teal-700">
+                Priority: {assistant.urgency}
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-700">{assistant.summary}</p>
+              <p className="mt-3 text-sm font-semibold text-slate-900">{assistant.disclaimer}</p>
+              <p className="mt-2 text-xs font-semibold text-slate-500">
+                Source: {assistantResult.source === "ollama" ? `Ollama ${assistantResult.model}` : "built-in clinical rules"}
+              </p>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <div>
+                <h3 className="flex items-center gap-2 text-sm font-bold text-slate-950">
+                  <ShieldCheck className="h-4 w-4 text-teal-700" aria-hidden="true" />
+                  What to do now
+                </h3>
+                <ul className="mt-2 space-y-1 text-sm text-slate-600">
+                  {assistant.immediateSteps.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <h3 className="flex items-center gap-2 text-sm font-bold text-slate-950">
+                  <Pill className="h-4 w-4 text-blue-700" aria-hidden="true" />
+                  Medicine guidance
+                </h3>
+                <ul className="mt-2 space-y-1 text-sm text-slate-600">
+                  {assistant.medicines.slice(0, 4).map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <h3 className="flex items-center gap-2 text-sm font-bold text-slate-950">
+                  <Stethoscope className="h-4 w-4 text-red-700" aria-hidden="true" />
+                  Doctor to consult
+                </h3>
+                <p className="mt-2 text-sm text-slate-600">{assistant.doctorType}</p>
+              </div>
+              <div>
+                <h3 className="flex items-center gap-2 text-sm font-bold text-slate-950">
+                  <Building2 className="h-4 w-4 text-amber-700" aria-hidden="true" />
+                  Hospital guidance
+                </h3>
+                <p className="mt-2 text-sm text-slate-600">{assistant.hospitalRecommendation}</p>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </section>
 
       <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-soft">

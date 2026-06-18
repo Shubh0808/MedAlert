@@ -14,6 +14,7 @@ import recordRoutes from "./routes/record.routes.js";
 import hospitalRoutes from "./routes/hospital.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import publicRoutes from "./routes/public.routes.js";
+import aiRoutes from "./routes/ai.routes.js";
 import { errorHandler, notFound } from "./middleware/error.middleware.js";
 import { sanitizeRequest } from "./middleware/sanitize.middleware.js";
 
@@ -74,6 +75,7 @@ app.use("/api/contacts", contactRoutes);
 app.use("/api", emergencyRoutes);
 app.use("/api", recordRoutes);
 app.use("/api/hospitals", hospitalRoutes);
+app.use("/api/ai", aiRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/public", publicRoutes);
 

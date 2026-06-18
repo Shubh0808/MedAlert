@@ -81,6 +81,30 @@ const emergencyAlertSchema = new mongoose.Schema(
         queuedAt: Date
       }
     ],
+    nearestHospital: {
+      hospitalId: String,
+      name: String,
+      phone: String,
+      emergencyPhone: String,
+      address: String,
+      latitude: Number,
+      longitude: Number,
+      distanceKm: Number,
+      source: String,
+      directionsUrl: String
+    },
+    hospitalNotification: {
+      name: String,
+      phone: String,
+      status: {
+        type: String,
+        enum: ["queued", "unavailable"],
+        default: "unavailable"
+      },
+      channel: String,
+      message: String,
+      queuedAt: Date
+    },
     resolvedAt: Date,
     cancelledAt: Date
   },
@@ -91,7 +115,7 @@ const emergencyAlertSchema = new mongoose.Schema(
 
 emergencyAlertSchema.index({ location: "2dsphere" });
 
-emergencyAlertSchema.pre("validate", function setGeoPoint(next) {
+emergencyAlertSchema.pre("validate", function setGeoPoint() {
   this.location = {
     type: "Point",
     coordinates: [this.longitude, this.latitude]
@@ -100,8 +124,6 @@ emergencyAlertSchema.pre("validate", function setGeoPoint(next) {
   if (!this.googleMapsUrl && this.latitude !== undefined && this.longitude !== undefined) {
     this.googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${this.latitude},${this.longitude}`;
   }
-
-  next();
 });
 
 const EmergencyAlert = mongoose.model("EmergencyAlert", emergencyAlertSchema);

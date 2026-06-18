@@ -14,7 +14,7 @@ import api from "../../api/client.js";
 import MapView from "../../components/MapView.jsx";
 import StatusBadge from "../../components/StatusBadge.jsx";
 import { useGeolocation } from "../../hooks/useGeolocation.js";
-import { formatDateTime, mapsSearchUrl } from "../../utils/format.js";
+import { formatDateTime, mapsDirectionsUrl, mapsSearchUrl } from "../../utils/format.js";
 
 const SOSPage = () => {
   const queryClient = useQueryClient();
@@ -32,11 +32,26 @@ const SOSPage = () => {
     queryKey: ["profile"],
     queryFn: async () => (await api.get("/profile")).data
   });
+  const { data: nearbyHospitalData, isLoading: hospitalsLoading } = useQuery({
+    queryKey: ["sos-nearest-hospitals", position?.latitude, position?.longitude],
+    queryFn: async () =>
+      (
+        await api.get("/hospitals", {
+          params: {
+            lat: position.latitude,
+            lng: position.longitude,
+            radius: 50
+          }
+        })
+      ).data,
+    enabled: Boolean(position)
+  });
 
   const alerts = data?.alerts || [];
   const activeAlert = alerts.find((alert) => alert.status === "active");
   const contacts = profileData?.contacts || [];
   const readiness = profileData?.profileCompleteness;
+  const nearestHospital = activeAlert?.nearestHospital || nearbyHospitalData?.hospitals?.[0];
 
   const emergencyMessage = useMemo(() => {
     const coordinates = activeAlert
@@ -50,8 +65,15 @@ const SOSPage = () => {
         ? mapsSearchUrl(position.latitude, position.longitude)
         : "";
 
-    return `MedAlert SOS: ${profileData?.profile?.fullName || "User"} needs help. Severity: ${activeAlert?.severity || severity}. Location: ${coordinates}. ${link}`;
-  }, [activeAlert, position, profileData?.profile?.fullName, severity]);
+    const hospitalText = nearestHospital
+      ? `Nearest hospital: ${nearestHospital.name} (${nearestHospital.distanceKm} km). Phone: ${nearestHospital.emergencyPhone || nearestHospital.phone || "not listed"}.`
+      : "Nearest hospital not identified yet.";
+    const contactsText = contacts.length
+      ? `Emergency contacts: ${contacts.map((contact) => `${contact.name} ${contact.phone}`).join("; ")}.`
+      : "No emergency contacts saved.";
+
+    return `MedAlert SOS: ${profileData?.profile?.fullName || "User"} needs help. Severity: ${activeAlert?.severity || severity}. Location: ${coordinates}. ${link} ${hospitalText} ${contactsText}`;
+  }, [activeAlert, contacts, nearestHospital, position, profileData?.profile?.fullName, severity]);
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -70,7 +92,7 @@ const SOSPage = () => {
       ).data;
     },
     onSuccess: async () => {
-      setMessage("SOS alert created and contacts queued.");
+      setMessage("SOS alert created. Emergency contacts and nearest hospital notification queued.");
       await queryClient.invalidateQueries({ queryKey: ["alerts"] });
       await queryClient.invalidateQueries({ queryKey: ["contacts"] });
     }
@@ -119,6 +141,8 @@ const SOSPage = () => {
     await navigator.clipboard.writeText(emergencyMessage);
     setMessage("Emergency message copied.");
   };
+
+  const smsUrl = (phone) => `sms:${phone}?&body=${encodeURIComponent(emergencyMessage)}`;
 
   const center = position
     ? [position.latitude, position.longitude]
@@ -225,6 +249,40 @@ const SOSPage = () => {
               <p>Accuracy {Math.round(position.accuracy || 0)} meters</p>
             </div>
           ) : null}
+          <div className="mt-4 rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700">
+            <p className="font-semibold text-slate-950">Nearest hospital</p>
+            {hospitalsLoading ? <p className="mt-1">Finding nearest hospital...</p> : null}
+            {nearestHospital ? (
+              <div className="mt-1 space-y-1">
+                <p>{nearestHospital.name}</p>
+                <p>{nearestHospital.distanceKm} km away</p>
+                <p>{nearestHospital.emergencyPhone || nearestHospital.phone || "Phone not listed"}</p>
+                <div className="flex flex-wrap gap-2 pt-2">
+                  {(nearestHospital.emergencyPhone || nearestHospital.phone) ? (
+                    <a
+                      href={smsUrl(nearestHospital.emergencyPhone || nearestHospital.phone)}
+                      className="rounded-md bg-red-600 px-3 py-2 text-xs font-bold text-white hover:bg-red-700"
+                    >
+                      Text hospital
+                    </a>
+                  ) : null}
+                  <a
+                    href={
+                      nearestHospital.directionsUrl ||
+                      mapsDirectionsUrl(nearestHospital.latitude, nearestHospital.longitude)
+                    }
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-md border border-slate-300 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100"
+                  >
+                    Directions
+                  </a>
+                </div>
+              </div>
+            ) : !hospitalsLoading ? (
+              <p className="mt-1">No nearby hospital found yet.</p>
+            ) : null}
+          </div>
         </div>
 
         <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
@@ -244,6 +302,12 @@ const SOSPage = () => {
               <p className="mt-1 text-sm text-red-700">
                 Severity {activeAlert.severity}. {activeAlert.notifiedContacts?.length || 0} emergency contacts queued.
               </p>
+              {activeAlert.nearestHospital ? (
+                <p className="mt-1 text-sm text-red-700">
+                  Nearest hospital: {activeAlert.nearestHospital.name} ({activeAlert.nearestHospital.distanceKm} km).
+                  Hospital alert {activeAlert.hospitalNotification?.status || "queued"}.
+                </p>
+              ) : null}
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -262,6 +326,15 @@ const SOSPage = () => {
                   <Copy className="h-4 w-4" aria-hidden="true" />
                   Copy message
                 </button>
+                {contacts.slice(0, 3).map((contact) => (
+                  <a
+                    key={contact._id}
+                    href={smsUrl(contact.phone)}
+                    className="inline-flex items-center gap-2 rounded-md border border-red-200 bg-white px-3 py-2 text-sm font-bold text-red-700 hover:bg-red-50"
+                  >
+                    Text {contact.name}
+                  </a>
+                ))}
                 <button
                   type="button"
                   onClick={() => resolveMutation.mutate(activeAlert._id)}
